@@ -35,7 +35,7 @@
 #include <UIPEthernet.h> // Used for Ethernet https://github.com/UIPEthernet/UIPEthernet
 
 // **** ETHERNET SETTING ****
-IPAddress ip(2, 168, 178, 200);
+IPAddress ip(2, 0, 0, 18);
 byte destination_Ip[] = {   255, 255, 255, 255 };    // the ip to send data, 255,255,255,255 is broadcast sending
 byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0x78, 0xEE  };
 
