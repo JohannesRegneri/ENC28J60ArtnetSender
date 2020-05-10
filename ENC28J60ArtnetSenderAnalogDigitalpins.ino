@@ -1,4 +1,5 @@
 
+
 /*
   This SCRIPT allows you to use arduino with the ENC28J60 ethernet shield and send dmx artnet data.
   Up to you to use logics for channels as you want.
@@ -26,8 +27,9 @@
   CS      -   10 or 8 //defined in UIPEthernet
   _____________________________________________________________________
 
-  Analog Inputs at A0-A6 and 5V GND
-  Pushbutton on D3 and GND
+  Analog Input at A0 and 5V GND
+  
+  Pushbuttona on D3-D6 and GND
 
 */
 
@@ -35,7 +37,7 @@
 #include <UIPEthernet.h> // Used for Ethernet https://github.com/UIPEthernet/UIPEthernet
 
 // **** ETHERNET SETTING ****
-IPAddress ip(2, 0, 0, 18);
+IPAddress ip(2, 0, 0, 200);
 byte destination_Ip[] = {   255, 255, 255, 255 };    // the ip to send data, 255,255,255,255 is broadcast sending
 byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0x78, 0xEE  };
 
@@ -45,8 +47,8 @@ byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0x78, 0xEE  };
 
 // art net parameters
 unsigned int localPort = 6454;      // artnet UDP port is by default 6454
-const int DMX_Universe = 0; //universe is from 0 to 15, subnet is not used
-const int number_of_channels = 128; //512 for 512 channels, MAX=512
+const int DMX_Universe = 2; //universe is from 0 to 15, subnet is not used
+const int number_of_channels = 16; //512 for 512 channels, MAX=512
 
 //ART-NET variables
 char ArtNetHead[8] = "Art-Net";
@@ -62,6 +64,10 @@ EthernetUDP Udp;
 //Artnet PACKET
 byte  ArtDmxBuffer[(art_net_header_size + number_of_channels) + 8 + 1];
 
+//TIMER
+long Timerpremillis = 0;
+long interval = 1000; //send artnet Package every 2 seconds
+
 
 void setup() {
 
@@ -72,6 +78,9 @@ void setup() {
   Udp.begin(localPort);
 
   pinMode(3, INPUT_PULLUP);
+  pinMode(4, INPUT_PULLUP);
+  pinMode(5, INPUT_PULLUP);
+  pinMode(6, INPUT_PULLUP);
 
 }
 
@@ -80,6 +89,7 @@ void loop() {
   check_arduino_digital_inputs();
   construct_arnet_packet();
   checkchangeandsend_packet();
+  send_packet_timer();
 }
 
 
@@ -89,7 +99,7 @@ void check_arduino_analog_inputs()
   //data from arduino aquisition
 
   int temp_val = 0;
-  for (int i = 0; i < 6; i++) //reads the 6 analogic inputs and set the data from 1023 steps to 255 steps (dmx)
+  for (int i = 0; i < 1; i++) //reads the 6 analogic inputs and set the data from 1023 steps to 255 steps (dmx)
   {
     temp_val = analogRead(i);
     buffer_dmx[i] = byte(temp_val / 4);
@@ -100,13 +110,34 @@ void check_arduino_analog_inputs()
 void check_arduino_digital_inputs()
 {
   // read the state of the pushbutton value:
-  int buttonState = digitalRead(3);
+  int button1State = digitalRead(3);
+  int button2State = digitalRead(4);
+  int button3State = digitalRead(5);
+  int button4State = digitalRead(6);
 
-  if (buttonState == LOW) {
-    buffer_dmx[88] = byte(255); //Channel 89
+  if (button1State == LOW) {
+    buffer_dmx[10] = byte(255); //Channel 89
   }
   else {
-    buffer_dmx[88] = byte(0); //Channel 89
+    buffer_dmx[10] = byte(0); //Channel 89
+  }
+  if (button2State == LOW) {
+    buffer_dmx[11] = byte(255); //Channel 90
+  }
+  else {
+    buffer_dmx[11] = byte(0); //Channel 90
+  }
+  if (button3State == LOW) {
+    buffer_dmx[12] = byte(255); //Channel 91
+  }
+  else {
+    buffer_dmx[12] = byte(0); //Channel 91
+  }
+  if (button4State == LOW) {
+    buffer_dmx[13] = byte(255); //Channel 92
+  }
+  else {
+    buffer_dmx[13] = byte(0); //Channel 92
   }
 
 }
@@ -154,11 +185,25 @@ void checkchangeandsend_packet()
       Udp.beginPacket(destination_Ip, localPort);
       Udp.write(ArtDmxBuffer, (art_net_header_size + number_of_channels + 1)); // was Udp.sendPacket
       Udp.endPacket();
-      delay(20);
+      delay(25);
     }
-    else {
-    }
-//    neu_buffer_dmx[s] = buffer_dmx[s]; //uncomment to only send data when values Changed
+    //else {
+    //}
+    //    neu_buffer_dmx[s] = buffer_dmx[s]; //uncomment to only send data when values Changed
   }
 }
+
+void send_packet_timer()
+{
+  //send every intervall seconds
+  unsigned long TimercurrentMillis = millis();
+  if (TimercurrentMillis - Timerpremillis > interval) {
+    Timerpremillis = TimercurrentMillis;
+    
+    Udp.beginPacket(destination_Ip, localPort);
+    Udp.write(ArtDmxBuffer, (art_net_header_size + number_of_channels + 1)); // was Udp.sendPacket
+    Udp.endPacket();
+  }
+}
+
 
